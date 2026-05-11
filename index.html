@@ -381,7 +381,7 @@
                 });
                 cameraModule.start().then(() => setLoading(false)).catch((error) => {
                     console.error('Camera initialization failed:', error);
-                    setCameraError('Camera initialization failed. Please allow camera access and refresh.');
+                    setCameraError('Camera initialization failed. Please allow camera access in your browser settings, then reload the page.');
                     setLoading(false);
                 });
 
@@ -425,7 +425,11 @@
                     if (animationFrameId) cancelAnimationFrame(animationFrameId);
                     window.removeEventListener('resize', onResize);
                     if (typeof cameraModule.stop === 'function') {
-                        try { cameraModule.stop(); } catch (error) { console.warn('Camera cleanup failed:', error); }
+                        try {
+                            cameraModule.stop();
+                        } catch (error) {
+                            console.warn('Camera cleanup failed:', error);
+                        }
                     }
                     if (renderer.domElement && renderer.domElement.parentNode === container) {
                         container.removeChild(renderer.domElement);

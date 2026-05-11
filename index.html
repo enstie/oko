@@ -1,386 +1,655 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Hybrid Hand-Tracked Particle System</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #video-container { 
-            position: absolute; bottom: 20px; left: 20px; 
-            width: 240px; height: 180px; 
-            z-index: 2; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden;
-            transform: scaleX(-1);
-        }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        #ui {
-            position: absolute; top: 20px; left: 20px; color: white; z-index: 3;
-            pointer-events: none;
-        }
-        h1 { margin: 0; font-size: 1.5rem; text-shadow: 0 0 10px #00d2ff; }
-        p { margin: 5px 0; font-size: 0.9rem; opacity: 0.8; }
-        .gesture-box {
-            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; margin-top: 10px;
-            border-left: 4px solid #00d2ff;
-        }
-        #current-shape { color: #ffff00; font-weight: bold; }
-        #loading {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #00d2ff; font-size: 2rem; font-weight: bold; z-index: 10;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RIVR — Premium E-commerce</title>
+  <style>
+    :root {
+      --bg: #f0f0f0;
+      --glass: rgba(255, 255, 255, 0.45);
+      --glass-strong: rgba(255, 255, 255, 0.65);
+      --text: #181818;
+      --muted: #555;
+      --accent: #111;
+      --radius: 22px;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 20% 0%, #ffffff 0%, #f0f0f0 40%, #ebebeb 100%);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container { width: min(1180px, 92vw); margin: 0 auto; }
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    nav {
+      position: sticky;
+      top: 14px;
+      z-index: 40;
+      margin: 14px auto 28px;
+      width: min(1180px, 92vw);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+    }
+
+    .brand { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.08em; }
+    .nav-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .nav-links button,
+    .chip,
+    .btn {
+      border: 1px solid rgba(0,0,0,0.1);
+      background: rgba(255,255,255,0.5);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform .2s ease, background .2s ease;
+      font-size: .92rem;
+    }
+
+    .nav-links button:hover,
+    .chip:hover,
+    .btn:hover { transform: scale(1.02); background: rgba(255,255,255,.85); }
+    .btn:active, .chip:active, .nav-links button:active { transform: scale(.98); }
+    .btn.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    main { padding-bottom: 44px; }
+
+    .hero {
+      min-height: 64vh;
+      border-radius: 34px;
+      padding: 26px;
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      gap: 24px;
+      align-content: space-between;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(120deg, rgba(0,0,0,0.5), rgba(0,0,0,0.25)),
+        url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop') center/cover;
+      z-index: 0;
+    }
+
+    .hero > * { position: relative; z-index: 1; color: #fff; }
+    .badge {
+      display: inline-flex;
+      width: fit-content;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.2);
+      font-size: .86rem;
+      letter-spacing: .03em;
+    }
+
+    h1 { font-size: clamp(2rem, 5vw, 4rem); margin: 10px 0 8px; }
+    h2 { font-size: clamp(1.4rem, 2.4vw, 2rem); margin: 0 0 10px; }
+    p { line-height: 1.6; color: var(--muted); }
+    .hero p { color: rgba(255,255,255,.9); max-width: 620px; }
+
+    .hero-corners {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .corner-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.24);
+      background: rgba(0,0,0,.27);
+      backdrop-filter: blur(6px);
+      color: #fff;
+      min-width: 240px;
+    }
+
+    .section { margin-top: 26px; padding: 20px; }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border-radius: 18px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.6);
+      background: var(--glass-strong);
+      box-shadow: var(--shadow);
+      min-height: 120px;
+    }
+
+    .category-card { grid-column: span 3; }
+    .product-card { grid-column: span 3; }
+
+    .product-media {
+      aspect-ratio: 4 / 3;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #fff, #ddd);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .product-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .muted { color: var(--muted); }
+    .price { font-weight: 700; }
+    .old-price { text-decoration: line-through; color: #888; font-size: .9rem; }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .product-layout {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 16px;
+    }
+
+    .media-large {
+      min-height: 380px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #fafafa, #d8d8d8);
+      overflow: hidden;
+    }
+
+    .media-large img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+
+    .thumb {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,.08);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.5fr .9fr;
+      gap: 16px;
+    }
+
+    .table-row {
+      display: grid;
+      grid-template-columns: 90px 1.4fr .8fr .7fr .8fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+
+    .tiny {
+      width: 74px;
+      height: 74px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .field {
+      width: 100%;
+      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: rgba(255,255,255,.7);
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pill { font-size: .82rem; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(0,0,0,.1); }
+    .ok { background: #e8f7ee; color: #13733d; }
+    .warn { background: #fff4dc; color: #8a5b00; }
+    .info { background: #e9f1ff; color: #104aad; }
+    .bad { background: #ffe8ea; color: #992335; }
+
+    .fade {
+      animation: fadeUp .6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 980px) {
+      .category-card, .product-card { grid-column: span 6; }
+      .split, .product-layout { grid-template-columns: 1fr; }
+      .table-row {
+        grid-template-columns: 70px 1fr;
+      }
+      .table-row > :nth-child(n+3) { justify-self: start; }
+    }
+
+    @media (max-width: 620px) {
+      nav { position: static; }
+      .category-card, .product-card { grid-column: span 12; }
+      .hero { min-height: 56vh; }
+      .form-grid { grid-template-columns: 1fr; }
+      .thumbs { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
 <body>
+  <nav class="glass">
+    <div class="brand">RIVR</div>
+    <div class="nav-links" id="navLinks"></div>
+    <button class="btn primary" id="primaryCta">Start Shopping</button>
+  </nav>
 
-    <div id="loading">Initialize Camera & AI...</div>
+  <main class="container" id="app"></main>
 
-    <div id="ui">
-        <h1>Cosmic Particle System</h1>
-        <p>Current Shape: <span id="current-shape">ENTSIE</span></p>
-        <div class="gesture-box">
-            <p>↔ <b>Tilt Hand:</b> Spin Left / Right</p>
-            <p>↕ <b>Move Hand:</b> Spin Up / Down</p>
-            <p>👌 <b>Pinch (Tap):</b> Next Shape</p>
-            <p>✊ <b>Fist:</b> Collapse</p>
-        </div>
-    </div>
+  <script>
+    const routes = {
+      home: 'Home',
+      shop: 'Shop',
+      product: 'Product',
+      cart: 'Cart',
+      checkout: 'Checkout',
+      account: 'Account',
+      orders: 'Orders',
+      wishlist: 'Wishlist',
+      contact: 'Support'
+    };
 
-    <div id="video-container">
-        <video id="input-video" autoplay playsinline></video>
-    </div>
-    <div id="canvas-container"></div>
+    const primaryByRoute = {
+      home: 'Start Shopping',
+      shop: 'Start Shopping',
+      product: 'Start Shopping',
+      cart: 'Secure Checkout',
+      checkout: 'Secure Checkout',
+      account: 'My Account',
+      orders: 'My Account',
+      wishlist: 'My Account',
+      contact: 'My Account'
+    };
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    const products = [
+      { id: 1, name: 'Aero Knit Jacket', category: 'Men', price: '$129', badge: 'New', img: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=1200&auto=format&fit=crop' },
+      { id: 2, name: 'Luna Everyday Tote', category: 'Accessories', price: '$89', badge: 'Sale', img: 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?q=80&w=1200&auto=format&fit=crop' },
+      { id: 3, name: 'Pulse Smart Earbuds', category: 'Tech', price: '$149', badge: 'New', img: 'https://images.unsplash.com/photo-1606741965509-674a8f42e6f4?q=80&w=1200&auto=format&fit=crop' },
+      { id: 4, name: 'Cloud Cotton Set', category: 'Women', price: '$99', badge: '', img: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop' }
+    ];
 
-    <script>
-        // --- 1. CONFIGURATION ---
-        const PARTICLE_COUNT = 25000;
-        const CAM_WIDTH = 640;
-        const CAM_HEIGHT = 480;
-        
-        // --- 2. THREE.JS SETUP ---
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.002);
+    const cartItems = [
+      { name: 'Aero Knit Jacket', variant: 'M / Black', unit: '$129', qty: 1, total: '$129', img: products[0].img },
+      { name: 'Luna Everyday Tote', variant: 'Cream', unit: '$89', qty: 2, total: '$178', img: products[1].img }
+    ];
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 60;
+    const orders = [
+      { id: '#RIVR-3024', date: 'May 02, 2026', status: 'Processing', total: '$214.00' },
+      { id: '#RIVR-2998', date: 'Apr 28, 2026', status: 'Shipped', total: '$99.00' },
+      { id: '#RIVR-2970', date: 'Apr 21, 2026', status: 'Delivered', total: '$178.00' }
+    ];
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        container.appendChild(renderer.domElement);
+    function statusClass(status) {
+      if (status === 'Delivered') return 'ok';
+      if (status === 'Processing') return 'warn';
+      if (status === 'Shipped') return 'info';
+      return 'bad';
+    }
 
-        // --- 3. PARTICLE SYSTEM ---
-        const particlesGeometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(PARTICLE_COUNT * 3);
-        const colors = new Float32Array(PARTICLE_COUNT * 3);
-        const sizes = new Float32Array(PARTICLE_COUNT);
+    function productCard(p) {
+      return `
+        <article class="card product-card fade">
+          <div class="product-media"><img src="${p.img}" alt="${p.name}" /></div>
+          <div class="row" style="justify-content:space-between">
+            <strong>${p.name}</strong>
+            ${p.badge ? `<span class="pill">${p.badge}</span>` : ''}
+          </div>
+          <p class="muted" style="margin:6px 0">${p.category}</p>
+          <div class="row" style="justify-content:space-between">
+            <span class="price">${p.price}</span>
+            <button class="btn">Add to Cart</button>
+          </div>
+        </article>`;
+    }
 
-        const targetPositions = new Float32Array(PARTICLE_COUNT * 3);
-        const targetColors = new Float32Array(PARTICLE_COUNT * 3);
+    function render(page) {
+      const app = document.getElementById('app');
+      document.getElementById('primaryCta').textContent = primaryByRoute[page] || 'Start Shopping';
 
-        const colorObj = new THREE.Color();
+      if (page === 'home') {
+        app.innerHTML = `
+          <section class="hero glass fade">
+            <div>
+              <span class="badge">New Season Picks</span>
+              <h1>Shop the Flow</h1>
+              <p>Discover trending products, exclusive drops, and seamless checkout in one premium shopping experience.</p>
+            </div>
+            <div class="hero-corners">
+              <div class="corner-card">
+                <div class="muted" style="color:#ddd">Daily Shoppers</div>
+                <h2 style="margin:6px 0 8px;color:#fff">12K+</h2>
+                <button class="btn">Browse Collections</button>
+              </div>
+              <div class="corner-card">
+                <strong>Customer Support</strong>
+                <p style="color:#ddd;margin:8px 0">Need help with an order?</p>
+                <a href="#contact" style="color:#fff">Help Center →</a>
+              </div>
+            </div>
+          </section>
 
-        // Initialize
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            positions[i * 3] = (Math.random()-0.5)*100;
-            positions[i * 3 + 1] = (Math.random()-0.5)*100;
-            positions[i * 3 + 2] = (Math.random()-0.5)*100;
-            sizes[i] = Math.random() * 2;
-        }
+          <section class="section glass fade">
+            <div class="section-header"><h2>Featured Categories</h2></div>
+            <div class="grid">
+              ${['Men', 'Women', 'Accessories', 'Tech'].map(c => `<div class="card category-card"><h3>${c}</h3><p class="muted">Premium picks and latest drops.</p></div>`).join('')}
+            </div>
+          </section>
 
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+          <section class="section glass fade">
+            <div class="section-header"><h2>Best Sellers</h2></div>
+            <div class="grid">${products.map(productCard).join('')}</div>
+          </section>
 
-        const getTexture = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 32; canvas.height = 32;
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-            gradient.addColorStop(0, 'rgba(255,255,255,1)');
-            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
-            gradient.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 32, 32);
-            return new THREE.Texture(canvas);
-        };
-        
-        const texture = getTexture();
-        texture.needsUpdate = true;
+          <section class="section glass fade">
+            <div class="section-header"><h2>Flash Deals</h2><span class="pill warn">Limited Time</span></div>
+            <div class="grid">${products.slice(0,3).map(productCard).join('')}</div>
+          </section>
 
-        const material = new THREE.PointsMaterial({
-            size: 0.6,
-            map: texture,
-            vertexColors: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            transparent: true,
-            opacity: 0.8
-        });
+          <section class="section glass fade">
+            <div class="section-header"><h2>Newsletter CTA</h2></div>
+            <p>Get exclusive releases and early offers from RIVR.</p>
+            <div class="row"><input class="field" placeholder="Email address" style="max-width:320px;margin:0"><button class="btn primary">Subscribe</button></div>
+          </section>
+        `;
+        return;
+      }
 
-        const particleSystem = new THREE.Points(particlesGeometry, material);
-        scene.add(particleSystem);
+      if (page === 'shop') {
+        app.innerHTML = `
+          <section class="section glass fade">
+            <div class="section-header">
+              <div>
+                <h2>Shop All Products</h2>
+                <p>Browse curated essentials, premium drops, and everyday favorites.</p>
+              </div>
+              <select class="field" style="max-width:220px;margin:0">
+                <option>Newest</option><option>Price: Low to High</option><option>Price: High to Low</option><option>Top Rated</option>
+              </select>
+            </div>
+            <div class="filters">${['All','Men','Women','Accessories','Tech','Home'].map(f=>`<button class="chip">${f}</button>`).join('')}</div>
+            <div class="grid" style="margin-top:16px">${products.concat(products).map(productCard).join('')}</div>
+            <div class="row" style="justify-content:center;margin-top:16px">
+              <button class="chip">1</button><button class="chip">2</button><button class="chip">3</button>
+            </div>
+          </section>
+        `;
+        return;
+      }
 
-        // --- 4. SHAPE & COLOR GENERATORS ---
+      if (page === 'product') {
+        const p = products[0];
+        app.innerHTML = `
+          <section class="section glass fade product-layout">
+            <div>
+              <div class="media-large"><img src="${p.img}" alt="${p.name}"></div>
+              <div class="thumbs">
+                ${[p.img,products[1].img,products[2].img,products[3].img].map(img=>`<div class="thumb"><img src="${img}" alt="thumb" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}
+              </div>
+            </div>
+            <article class="card">
+              <h2>${p.name}</h2>
+              <div class="row"><span>★★★★☆</span><span class="muted">(248 reviews)</span></div>
+              <div class="row"><span class="price">$129</span><span class="old-price">$159</span></div>
+              <p>Lightweight premium outerwear built for daily motion and all-season layering.</p>
+              <label>Size<select class="field"><option>S</option><option selected>M</option><option>L</option></select></label>
+              <label>Color<select class="field"><option>Black</option><option>Stone</option><option>Navy</option></select></label>
+              <label>Quantity<input class="field" type="number" value="1" min="1" /></label>
+              <div class="row"><button class="btn primary">Add to Cart</button><button class="btn">Add to Wishlist</button></div>
+              <p class="muted">Free shipping on orders over $50</p>
+            </article>
+          </section>
+          <section class="section glass fade"><h2>Product Details</h2><p>Breathable knit shell, structured finish, and ergonomic cut.</p></section>
+          <section class="section glass fade"><h2>Materials & Care</h2><p>70% recycled fiber blend. Machine wash cold.</p></section>
+          <section class="section glass fade"><h2>Reviews</h2><p>Customers highlight fit, comfort, and durability.</p></section>
+        `;
+        return;
+      }
 
-        function randomSpherePoint(radius) {
-            const u = Math.random();
-            const v = Math.random();
-            const theta = 2 * Math.PI * u;
-            const phi = Math.acos(2 * v - 1);
-            return {
-                x: radius * Math.sin(phi) * Math.cos(theta),
-                y: radius * Math.sin(phi) * Math.sin(theta),
-                z: radius * Math.cos(phi)
-            };
-        }
+      if (page === 'cart') {
+        app.innerHTML = `
+          <section class="section glass fade split">
+            <div class="card">
+              <h2>Your Cart</h2>
+              ${cartItems.map(i => `
+                <div class="table-row">
+                  <div class="tiny"><img src="${i.img}" alt="${i.name}" style="width:100%;height:100%;object-fit:cover"></div>
+                  <div><strong>${i.name}</strong><div class="muted">${i.variant}</div></div>
+                  <div>${i.unit}</div>
+                  <div>Qty: ${i.qty}</div>
+                  <div><strong>${i.total}</strong></div>
+                  <button class="btn">Remove</button>
+                </div>
+              `).join('')}
+              <div class="card" style="margin-top:12px"><strong>Your cart is empty</strong><p class="muted">(Preview state available)</p><button class="btn">Continue Shopping</button></div>
+            </div>
+            <aside class="card">
+              <h3>Summary</h3>
+              <p class="row" style="justify-content:space-between"><span>Subtotal</span><strong>$307.00</strong></p>
+              <p class="row" style="justify-content:space-between"><span>Shipping</span><strong>$9.00</strong></p>
+              <p class="row" style="justify-content:space-between"><span>Estimated tax</span><strong>$18.00</strong></p>
+              <hr style="border:none;border-top:1px solid rgba(0,0,0,.1)">
+              <p class="row" style="justify-content:space-between"><span>Total</span><strong>$334.00</strong></p>
+              <input class="field" placeholder="Promo code">
+              <div class="row"><button class="btn">Apply</button><button class="btn primary">Proceed to Checkout</button></div>
+            </aside>
+          </section>
+        `;
+        return;
+      }
 
-        const textGrids = {
-            E: [[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],
-            N: [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1]],
-            T: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
-            S: [[0,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0]],
-            I: [[1],[1],[1],[1],[1]]
-        };
-        
-        function getTextPos(char, xOffset) {
-            const grid = textGrids[char] || textGrids['I'];
-            const h = grid.length; const w = grid[0].length;
-            const scale = 5; 
-            let r, c;
-            do {
-                r = Math.floor(Math.random()*h);
-                c = Math.floor(Math.random()*w);
-            } while (grid[r][c] !== 1);
+      if (page === 'checkout') {
+        app.innerHTML = `
+          <section class="section glass fade split">
+            <div class="card">
+              <h2>Checkout</h2>
+              <h3>Contact Information</h3>
+              <div class="form-grid">
+                <label>Name<input class="field" placeholder="Alex Rivers"></label>
+                <label>Email<input class="field" placeholder="alex@rivr.com"></label>
+              </div>
+              <h3>Shipping Address</h3>
+              <div class="form-grid">
+                <label>Phone<input class="field" placeholder="+1"></label>
+                <label>Address<input class="field" placeholder="123 River St"></label>
+                <label>City<input class="field" placeholder="San Diego"></label>
+                <label>ZIP<input class="field" placeholder="92101"></label>
+                <label>Country<input class="field" placeholder="USA"></label>
+              </div>
+              <h3>Delivery Method</h3>
+              <div class="row"><button class="chip">Standard</button><button class="chip">Express</button></div>
+              <h3>Payment Method</h3>
+              <div class="row"><button class="chip">Card</button><button class="chip">PayPal</button><button class="chip">Apple Pay</button></div>
+              <h3>Order Review</h3>
+              <p class="muted">2 items ready for shipment.</p>
+              <button class="btn primary" id="placeOrderBtn">Place Order</button>
+              <div id="orderSuccess" class="card" style="display:none;margin-top:12px">
+                <strong>Order Confirmed</strong>
+                <p>Thank you for shopping with RIVR.</p>
+              </div>
+            </div>
+            <aside class="card">
+              <h3>Summary</h3>
+              <p class="row" style="justify-content:space-between"><span>Items subtotal</span><strong>$307.00</strong></p>
+              <p class="row" style="justify-content:space-between"><span>Shipping</span><strong>$9.00</strong></p>
+              <p class="row" style="justify-content:space-between"><span>Tax</span><strong>$18.00</strong></p>
+              <hr style="border:none;border-top:1px solid rgba(0,0,0,.1)">
+              <p class="row" style="justify-content:space-between"><span>Final total</span><strong>$334.00</strong></p>
+            </aside>
+          </section>
+        `;
+        setTimeout(() => {
+          const btn = document.getElementById('placeOrderBtn');
+          if (btn) btn.onclick = () => (document.getElementById('orderSuccess').style.display = 'block');
+        }, 0);
+        return;
+      }
 
-            return { 
-                x: xOffset + (c * scale) + (Math.random()-0.5)*0.5, 
-                y: (2 - r) * scale + (Math.random()-0.5)*0.5, 
-                z: (Math.random()-0.5)*0.2 
-            };
-        }
+      if (page === 'account') {
+        app.innerHTML = `
+          <section class="section glass fade">
+            <h2>Welcome back, Alex</h2>
+            <div class="grid" style="margin-top:14px">
+              <div class="card category-card"><h3>Orders</h3><p class="muted">12 total</p></div>
+              <div class="card category-card"><h3>Wishlist</h3><p class="muted">8 saved</p></div>
+              <div class="card category-card"><h3>Reward Points</h3><p class="muted">1,420 pts</p></div>
+              <div class="card category-card"><h3>Recent Activity</h3><p class="muted">Order #RIVR-3024 processing</p></div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn">View Orders</button>
+              <button class="btn">Manage Addresses</button>
+              <button class="btn">Payment Methods</button>
+              <button class="btn">Profile Settings</button>
+            </div>
+          </section>
+        `;
+        return;
+      }
 
-        const shapes = {
-            'ENTSIE': (i) => {
-                const word = "ENTSIE";
-                const idx = i % word.length;
-                const char = word[idx];
-                const offset = (idx - 2.5) * 12;
-                return getTextPos(char, offset);
-            },
-            'Flower': (i) => {
-                const k = 3; 
-                const theta = (i / PARTICLE_COUNT) * Math.PI * 14; 
-                const r = 25 * Math.cos(k * theta); 
-                return { 
-                    x: r * Math.cos(theta), 
-                    y: r * Math.sin(theta), 
-                    z: (Math.random()-0.5)*5 + (theta/5) 
-                };
-            },
-            'Rocket': (i) => {
-                const part = Math.random();
-                if (part < 0.6) { 
-                    const angle = Math.random() * Math.PI * 2;
-                    const r = 4; const h = (Math.random() * 30) - 10;
-                    return { x: Math.cos(angle)*r, y: h, z: Math.sin(angle)*r };
-                } else if (part < 0.8) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const h = Math.random() * 10; const r = 4 * (1 - h/10);
-                    return { x: Math.cos(angle)*r, y: 20 + h, z: Math.sin(angle)*r };
-                } else if (part < 0.9) {
-                    const finIdx = Math.floor(Math.random()*4);
-                    const angle = (finIdx * Math.PI/2);
-                    const w = Math.random() * 8; const h = Math.random() * 10;
-                    return {
-                        x: Math.cos(angle) * (4 + w*(1-h/10)),
-                        y: -10 + h,
-                        z: Math.sin(angle) * (4 + w*(1-h/10))
-                    };
-                } else {
-                    const angle = Math.random() * Math.PI * 2;
-                    const r = Math.random() * 3; const h = (Math.random() * -15) - 10;
-                    return { x: Math.cos(angle)*r, y: h, z: Math.sin(angle)*r };
-                }
-            },
-            'Black Hole': (i) => {
-                if (i < PARTICLE_COUNT * 0.1) {
-                    const h = (Math.random() * 40) + 5; const w = Math.random() * 2; const up = Math.random() > 0.5 ? 1 : -1;
-                    return { x: (Math.random()-0.5)*w, y: h * up, z: (Math.random()-0.5)*w };
-                } else {
-                    const angle = Math.random() * Math.PI * 2; const r = 10 + Math.random() * 35; 
-                    const spiral = angle + (r * 0.2);
-                    return { x: Math.cos(spiral) * r, y: (Math.random() - 0.5) * (100 / r), z: Math.sin(spiral) * r };
-                }
-            },
-            'Solar System': (i) => {
-                if (i < PARTICLE_COUNT * 0.05) return randomSpherePoint(Math.random() * 5);
-                const bands = [12, 20, 30, 45, 60];
-                const band = bands[Math.floor(Math.random() * bands.length)];
-                const r = band + (Math.random() - 0.5) * 2;
-                const angle = Math.random() * Math.PI * 2;
-                return { x: Math.cos(angle) * r, y: (Math.random() - 0.5), z: Math.sin(angle) * r };
-            },
-            'Satellite': (i) => {
-                if(Math.random()<0.2) return { x:(Math.random()-.5)*10, y:(Math.random()-.5)*10, z:(Math.random()-.5)*10 };
-                const side = Math.random()>0.5?1:-1;
-                return { x:(5+Math.random()*25)*side, y:(Math.random()-.5)*8, z:(Math.random()-.5) };
-            },
-            'Galaxy': (i) => {
-                const arms = 5; const r = Math.random() * 40; const spin = r * 0.3;
-                const armAngle = (i % arms) / arms * Math.PI * 2;
-                return {
-                    x: Math.cos(armAngle + spin) * r + (Math.random()-0.5)*5,
-                    y: (Math.random()-0.5) * 5,
-                    z: Math.sin(armAngle + spin) * r + (Math.random()-0.5)*5
-                };
-            },
-            'Earth': (i) => randomSpherePoint(25),
-            'Star': (i) => {
-                const r = 5 + Math.abs(Math.cos(i))*20;
-                return randomSpherePoint(r);
-            },
-            'Cube': (i) => {
-                const s = 30;
-                return { x:(Math.random()-.5)*s, y:(Math.random()-.5)*s, z:(Math.random()-.5)*s };
-            }
-        };
+      if (page === 'orders') {
+        app.innerHTML = `
+          <section class="section glass fade">
+            <h2>My Orders</h2>
+            ${orders.map(o => `
+              <div class="card" style="margin-top:12px">
+                <div class="row" style="justify-content:space-between">
+                  <div><strong>${o.id}</strong><div class="muted">${o.date}</div></div>
+                  <span class="pill ${statusClass(o.status)}">${o.status}</span>
+                  <strong>${o.total}</strong>
+                  <div class="row"><button class="btn">View Details</button><button class="btn">Track Package</button></div>
+                </div>
+              </div>
+            `).join('')}
+            <div class="card" style="margin-top:12px">
+              <h3>Order Detail</h3>
+              <p class="muted">Item breakdown, delivery timeline, and shipping checkpoints appear here.</p>
+            </div>
+          </section>
+        `;
+        return;
+      }
 
-        const shapeKeys = Object.keys(shapes);
-        let currentShapeIndex = 0;
+      if (page === 'wishlist') {
+        app.innerHTML = `
+          <section class="section glass fade">
+            <h2>My Wishlist</h2>
+            <div class="grid" style="margin-top:10px">
+              ${products.map(p => `
+                <div class="card product-card">
+                  <div class="product-media"><img src="${p.img}" alt="${p.name}" /></div>
+                  <strong>${p.name}</strong>
+                  <div class="row" style="justify-content:space-between;margin-top:8px">
+                    <button class="btn">Move to Cart</button>
+                    <button class="btn">Remove</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="card" style="margin-top:12px"><strong>Your wishlist is empty</strong><p class="muted">(Preview empty state)</p><button class="btn">Explore Products</button></div>
+          </section>
+        `;
+        return;
+      }
 
-        function applyColors(shapeName) {
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                let r, g, b;
-                const hue = i/PARTICLE_COUNT;
-                
-                if (shapeName === 'ENTSIE') { r=0; g=0.8; b=1; }
-                else if (shapeName === 'Flower') { r=1; g=0.2; b=0.4; } 
-                else if (shapeName === 'Rocket') {
-                    const y = targetPositions[i*3+1];
-                    if (y < -10) { r=1; g=0.6; b=0; } 
-                    else if (y > 20) { r=0.8; g=0; b=0; } 
-                    else { r=0.8; g=0.8; b=0.9; } 
-                }
-                else if (shapeName === 'Black Hole') {
-                     if(Math.abs(targetPositions[i*3+1])>20) { r=0.8; g=0.9; b=1.0; } 
-                     else { r=1; g=0.4; b=0.1; } 
-                }
-                else if (shapeName === 'Solar System' && Math.abs(targetPositions[i*3])<5) { r=1; g=1; b=0.2; } 
-                else if (shapeName === 'Earth') { r=0; g=0.4; b=1; }
-                else {
-                    colorObj.setHSL(hue, 0.8, 0.6);
-                    r=colorObj.r; g=colorObj.g; b=colorObj.b;
-                }
-                targetColors[i*3] = r; targetColors[i*3+1] = g; targetColors[i*3+2] = b;
-            }
-        }
+      app.innerHTML = `
+        <section class="section glass fade">
+          <h2>Contact & Support</h2>
+          <p>We’re here to help with orders, returns, and product questions.</p>
+          <div class="split">
+            <form class="card">
+              <label>Name<input class="field" /></label>
+              <label>Email<input class="field" /></label>
+              <label>Order Number (optional)<input class="field" /></label>
+              <label>Subject<input class="field" /></label>
+              <label>Message<textarea class="field" rows="5"></textarea></label>
+              <button type="button" class="btn primary">Send Message</button>
+            </form>
+            <div class="card">
+              <h3>Support Channels</h3>
+              <p><strong>Live Chat</strong><br><span class="muted">Available 24/7</span></p>
+              <p><strong>Email Support</strong><br><span class="muted">support@rivr.shop</span></p>
+              <p><strong>Call Us</strong><br><span class="muted">+1 (800) 555-0142</span></p>
+              <hr style="border:none;border-top:1px solid rgba(0,0,0,.1)">
+              <p><a href="#">FAQ: Returns</a></p>
+              <p><a href="#">FAQ: Shipping</a></p>
+            </div>
+          </div>
+        </section>
+      `;
+    }
 
-        function generateTargetPositions(shapeName) {
-            const func = shapes[shapeName];
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const pos = func(i);
-                targetPositions[i * 3] = pos.x;
-                targetPositions[i * 3 + 1] = pos.y;
-                targetPositions[i * 3 + 2] = pos.z;
-            }
-            applyColors(shapeName);
-            document.getElementById('current-shape').innerText = shapeName;
-        }
+    function buildNav() {
+      const nav = document.getElementById('navLinks');
+      nav.innerHTML = Object.entries(routes).map(([key, label]) => `<button data-route="${key}">${label}</button>`).join('');
+      nav.querySelectorAll('button').forEach(b => b.onclick = () => {
+        location.hash = b.dataset.route;
+      });
+    }
 
-        generateTargetPositions('ENTSIE');
+    function currentPage() {
+      const p = location.hash.replace('#', '') || 'home';
+      return routes[p] ? p : 'home';
+    }
 
-        const videoElement = document.getElementById('input-video');
-        const loadingElement = document.getElementById('loading');
-        const handModule = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-        handModule.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.6 });
-        handModule.onResults(onResults);
-        const cameraModule = new Camera(videoElement, {
-            onFrame: async () => await handModule.send({image: videoElement}),
-            width: CAM_WIDTH, height: CAM_HEIGHT
-        });
-        cameraModule.start().then(() => loadingElement.style.display = 'none');
+    function run() {
+      buildNav();
+      render(currentPage());
+      window.addEventListener('hashchange', () => render(currentPage()));
+      document.getElementById('primaryCta').onclick = () => {
+        const p = currentPage();
+        if (p === 'cart') location.hash = 'checkout';
+        else if (['account', 'orders', 'wishlist', 'contact'].includes(p)) location.hash = 'account';
+        else location.hash = 'shop';
+      };
+    }
 
-        let handY = 0, handRotY = 0, handOpen = 1.0, isPinching = false, lastPinchTime = 0;
-
-        function onResults(results) {
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const lm = results.multiHandLandmarks[0];
-                
-                // 1. Up/Down Control: Use normalized Y position
-                const palmY = lm[9].y;
-                handY = (palmY - 0.5) * 2.0;
-
-                // 2. Left/Right Control: Use Hand Tilt (Angle)
-                const dx = lm[9].x - lm[0].x;
-                const dy = lm[9].y - lm[0].y;
-                handRotY = (Math.atan2(dy, dx) + (Math.PI/2)) * 2.0;
-
-                // 3. Pinch Logic (RELAXED)
-                const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
-                const middleDist = Math.hypot(lm[4].x - lm[12].x, lm[4].y - lm[12].y);
-                
-                // FIXED LOGIC: Pinch must be < 0.05 AND Pinch must be smaller than Middle Finger distance
-                if (pinchDist < 0.05 && pinchDist < middleDist) {
-                    if (!isPinching && Date.now() - lastPinchTime > 800) {
-                        isPinching = true;
-                        currentShapeIndex = (currentShapeIndex + 1) % shapeKeys.length;
-                        generateTargetPositions(shapeKeys[currentShapeIndex]);
-                        lastPinchTime = Date.now();
-                    }
-                } else {
-                    isPinching = false;
-                }
-
-                const tips = [8, 12, 16, 20];
-                let distSum = 0;
-                tips.forEach(t => distSum += Math.hypot(lm[t].x - lm[0].x, lm[t].y - lm[0].y));
-                handOpen = Math.min(Math.max(((distSum / 4) - 0.15) * 4, 0), 1);
-            }
-        }
-
-        const clock = new THREE.Clock();
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const positionsArray = particlesGeometry.attributes.position.array;
-            const colorsArray = particlesGeometry.attributes.color.array;
-            
-            // --- HYBRID CONTROLS ---
-            // Y-Rotation (Left/Right) = Hand Tilt
-            particleSystem.rotation.y += 0.002 + (handRotY * 0.05);
-            // X-Rotation (Up/Down) = Hand Vertical Position
-            particleSystem.rotation.x += (handY * 0.05);
-
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const ix = i * 3;
-                positionsArray[ix] += (targetPositions[ix] - positionsArray[ix]) * 0.08;
-                positionsArray[ix+1] += (targetPositions[ix+1] - positionsArray[ix+1]) * 0.08;
-                positionsArray[ix+2] += (targetPositions[ix+2] - positionsArray[ix+2]) * 0.08;
-                colorsArray[ix] += (targetColors[ix] - colorsArray[ix]) * 0.05;
-                colorsArray[ix+1] += (targetColors[ix+1] - colorsArray[ix+1]) * 0.05;
-                colorsArray[ix+2] += (targetColors[ix+2] - colorsArray[ix+2]) * 0.05;
-            }
-            
-            const scale = 0.6 + (handOpen * 0.4);
-            particleSystem.scale.set(scale, scale, scale);
-            particlesGeometry.attributes.position.needsUpdate = true;
-            particlesGeometry.attributes.color.needsUpdate = true;
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        animate();
-    </script>
+    run();
+  </script>
 </body>
 </html>

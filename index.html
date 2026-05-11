@@ -319,6 +319,7 @@
       { name: 'Aero Knit Jacket', variant: 'M / Black', unit: '$129', qty: 1, total: '$129', img: products[0].img },
       { name: 'Luna Everyday Tote', variant: 'Cream', unit: '$89', qty: 2, total: '$178', img: products[1].img }
     ];
+    const wishlistItems = [...products];
 
     const orders = [
       { id: '#RIVR-3024', date: 'May 02, 2026', status: 'Processing', total: '$214.00' },
@@ -457,7 +458,7 @@
           <section class="section glass fade split">
             <div class="card">
               <h2>Your Cart</h2>
-              ${cartItems.map(i => `
+              ${cartItems.length ? cartItems.map(i => `
                 <div class="table-row">
                   <div class="tiny"><img src="${i.img}" alt="${i.name}" style="width:100%;height:100%;object-fit:cover"></div>
                   <div><strong>${i.name}</strong><div class="muted">${i.variant}</div></div>
@@ -466,8 +467,7 @@
                   <div><strong>${i.total}</strong></div>
                   <button class="btn">Remove</button>
                 </div>
-              `).join('')}
-              <div class="card" style="margin-top:12px"><strong>Your cart is empty</strong><p class="muted">(Preview state available)</p><button class="btn">Continue Shopping</button></div>
+              `).join('') : `<div class="card" style="margin-top:12px"><strong>Your cart is empty</strong><p class="muted">Add items to continue checkout.</p><button class="btn">Continue Shopping</button></div>`}
             </div>
             <aside class="card">
               <h3>Summary</h3>
@@ -579,8 +579,8 @@
         app.innerHTML = `
           <section class="section glass fade">
             <h2>My Wishlist</h2>
-            <div class="grid" style="margin-top:10px">
-              ${products.map(p => `
+            ${wishlistItems.length ? `<div class="grid" style="margin-top:10px">
+              ${wishlistItems.map(p => `
                 <div class="card product-card">
                   <div class="product-media"><img src="${p.img}" alt="${p.name}" /></div>
                   <strong>${p.name}</strong>
@@ -590,8 +590,7 @@
                   </div>
                 </div>
               `).join('')}
-            </div>
-            <div class="card" style="margin-top:12px"><strong>Your wishlist is empty</strong><p class="muted">(Preview empty state)</p><button class="btn">Explore Products</button></div>
+            </div>` : `<div class="card" style="margin-top:12px"><strong>Your wishlist is empty</strong><p class="muted">Save products here for later.</p><button class="btn">Explore Products</button></div>`}
           </section>
         `;
         return;

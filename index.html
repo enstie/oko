@@ -48,6 +48,7 @@
             const canvasContainerRef = useRef(null);
             const videoRef = useRef(null);
             const [loading, setLoading] = useState(true);
+            const [cameraError, setCameraError] = useState('');
             const [currentShape, setCurrentShape] = useState('ENTSIE');
 
             useEffect(() => {
@@ -139,7 +140,7 @@
                 };
 
                 function getTextPos(char, xOffset) {
-                    const grid = textGrids[char] || textGrids.I;
+                    const grid = textGrids[char] || textGrids['I'];
                     const h = grid.length;
                     const w = grid[0].length;
                     const scale = 5;
@@ -378,7 +379,11 @@
                     width: CAM_WIDTH,
                     height: CAM_HEIGHT
                 });
-                cameraModule.start().then(() => setLoading(false)).catch(() => setLoading(false));
+                cameraModule.start().then(() => setLoading(false)).catch((error) => {
+                    console.error('Camera initialization failed:', error);
+                    setCameraError('Camera initialization failed. Please allow camera access and refresh.');
+                    setLoading(false);
+                });
 
                 let animationFrameId = null;
 
@@ -420,7 +425,7 @@
                     if (animationFrameId) cancelAnimationFrame(animationFrameId);
                     window.removeEventListener('resize', onResize);
                     if (typeof cameraModule.stop === 'function') {
-                        try { cameraModule.stop(); } catch (_) {}
+                        try { cameraModule.stop(); } catch (error) { console.warn('Camera cleanup failed:', error); }
                     }
                     if (renderer.domElement && renderer.domElement.parentNode === container) {
                         container.removeChild(renderer.domElement);
@@ -435,7 +440,7 @@
             return React.createElement(
                 React.Fragment,
                 null,
-                loading ? React.createElement('div', { id: 'loading' }, 'Initialize Camera & AI...') : null,
+                (loading || cameraError) ? React.createElement('div', { id: 'loading' }, cameraError || 'Initialize Camera & AI...') : null,
                 React.createElement(
                     'div',
                     { id: 'ui' },
@@ -453,7 +458,7 @@
                 React.createElement(
                     'div',
                     { id: 'video-container' },
-                    React.createElement('video', { ref: videoRef, autoPlay: true, playsInline: true })
+                    React.createElement('video', { id: 'input-video', ref: videoRef, autoPlay: true, playsInline: true })
                 ),
                 React.createElement('div', { id: 'canvas-container', ref: canvasContainerRef })
             );
